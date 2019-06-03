@@ -21,48 +21,52 @@ class agent:
 
 	G = []			# Gene Matrix
 	P = []			# Next Step Policy
-
+	cfg = ''
 
 	def __init__(self,env,cfg):
 		self.c = [int(g(0,10)),int(g(0,10))]
 		self.env = env
 		self.E = env.getSensingMatrix(self.c)
 		self.G = gene(cfg)
+		self.cfg = cfg
 
 	def step(self):
 
-		self.E = self.env.getSensingMatrix(self.c)
+		if np.linalg.norm(self.c) < self.cfg.B + 10:
 
-		self.P = self.G.A @ self.E @ self.G.B
-		for i in range(len(self.P)):
-			if self.P[i] == np.array(self.P).max():
-				break
-		# Up
-		if i == 0:
-			self.c += a([1,0])
-		# Down
-		elif i == 1:
-			self.c += a([-1,0])
-		# Left
-		elif i == 2:
-			self.c += a([0,-1])
-		# Right
-		elif i == 3:
-			self.c += a([0,1])
-		# Up Right
-		elif i == 4:
-			self.c += a([1,1])
-		# Down Right
-		elif i == 5:
-			self.c += a([-1,1])
-		# Down Left
-		elif i == 6:	
-			self.c += a([-1,-1])
-		# Up Left
-		elif i == 7:
-			self.c += a([1,-1])
 
-		self.f += self.env.consume(self.c)
+			self.E = self.env.getSensingMatrix(self.c)
+
+			self.P = self.G.A @ self.E @ self.G.B
+			for i in range(len(self.P)):
+				if self.P[i] == np.array(self.P).max():
+					break
+			# Up
+			if i == 0:
+				self.c += a([1,0])
+			# Down
+			elif i == 1:
+				self.c += a([-1,0])
+			# Left
+			elif i == 2:
+				self.c += a([0,-1])
+			# Right
+			elif i == 3:
+				self.c += a([0,1])
+			# Up Right
+			elif i == 4:
+				self.c += a([1,1])
+			# Down Right
+			elif i == 5:
+				self.c += a([-1,1])
+			# Down Left
+			elif i == 6:	
+				self.c += a([-1,-1])
+			# Up Left
+			elif i == 7:
+				self.c += a([1,-1])
+
+			self.f += self.env.consume(self.c)
 
 class genePool:
 
@@ -88,10 +92,14 @@ class genePool:
 		self.P = tmp
 
 	def mutate(self):
-		self.P += np.random.normal(0,.1,self.P.shape)
+		self.P += np.random.normal(0,1,self.P.shape)
 
-	# def pltAvg(self):
-
+	def pltAvg(self):
+		plt.figure('Weights')
+		plt.clf()
+		plt.imshow(self.P.mean(axis=0),aspect='equal')
+		plt.show(block=False)
+		plt.pause(.001)
 
 	def reproduce(self,agents):
 
@@ -200,6 +208,7 @@ class environment:
 			yr = ag.c[1]-ym 
 			grid[xr,yr] = -1
 
+		plt.figure('Environment')
 		plt.clf()
 		plt.imshow(grid,aspect='equal')
 		plt.show(block=False)
@@ -234,10 +243,10 @@ class splice:
 					a.step()
 				self.E.plot(self.A)
 
-
-
 			# Reproduce
 			self.A = self.GP.reproduce(self.A)
+
+			self.GP.pltAvg()
 
 			avg = 0
 			maxv = 0
@@ -266,10 +275,10 @@ class cfg:
 
 	def __init__(self,ID):
 		if ID == 1:
-			self.N_A 	= 100
-			self.S 		= 99
-			self.V 		= 5
-			self.B 		= 40
+			self.N_A 	= 99
+			self.S 		= 5
+			self.V 		= 10
+			self.B 		= 100
 
 
 if __name__ == '__main__':
