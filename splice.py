@@ -124,7 +124,7 @@ class genePool:
 
 
 
-		fig,ax = plt.subplots(nrows=2,ncols=4,num='Weight Distribution')
+		fig,ax = plt.subplots(nrows=2,ncols=4,num='Weight Distribution',clear=True)
 
 		names = ['up','down','left','right','UR','DR','DL','UL']
 
@@ -136,12 +136,12 @@ class genePool:
 				for k in range(len(h)):
 					g[j,k] = v[j]*h[k]
 
+			# ax[int(i/4),i%4].clear()
 			ax[int(i/4),i%4].title.set_text(names[i])
 			ax[int(i/4),i%4].imshow(g,aspect='equal')
 
 		plt.show(block=False)
 		plt.pause(.001)
-
 
 
 
@@ -346,7 +346,7 @@ class cfg:
 			self.V 		= 5
 			self.B 		= 50
 			# self.FN 	= 'genepool_5V.p'
-			self.L 		= 100
+			self.L 		= 5
 
 
 if __name__ == '__main__':
