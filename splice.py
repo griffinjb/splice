@@ -33,10 +33,9 @@ class agent:
 
 	def step(self):
 
+		self.E = self.env.getSensingMatrix(self.c)
+
 		if np.linalg.norm(self.c) < self.cfg.B + 10:
-
-
-			self.E = self.env.getSensingMatrix(self.c)
 
 			E = self.E
 			A = self.G.A 
@@ -79,12 +78,19 @@ class agent:
 class genePool:
 
 	P = []	# Gene Pool [N_A,Dir,Vision]
+	cfg = ''
+
+	def __init__(self,c):
+		self.cfg = c
 
 	def save(self,fn):
 		dump(self.P,open(fn,'wb'))
 
-	def loadGene(self,fn):
-		self.P = load(open(fn,'rb'))
+	def loadGene(self,fn=''):
+		if fn == '':	
+			self.P = load(open(self.cfg.FN,'rb'))	
+		else:
+			self.P = load(open(fn,'rb'))
 
 	def getShuffleReducePool(self,agents):
 		tmp = []
@@ -160,6 +166,8 @@ class genePool:
 			except Exception as e:
 				print(e)
 				print('Use Even Number of Agents')
+		else:
+			self.loadGene()
 
 		PCTR = 0
 		for i in range(len(agents)):
@@ -270,7 +278,7 @@ class splice:
 		self.c = c
 		E = environment(c)
 		self.A = [agent(E,c) for i in range(c.N_A)]
-		self.GP = genePool()
+		self.GP = genePool(c)
 
 	def sharedEnvironmentTrain(self):
 
@@ -341,12 +349,12 @@ class cfg:
 
 	def __init__(self,ID):
 		if ID == 1:
-			self.N_A 	= 100
-			self.S 		= 50
+			self.N_A 	= 10
+			self.S 		= 99
 			self.V 		= 5
-			self.B 		= 50
-			# self.FN 	= 'genepool_5V.p'
-			self.L 		= 5
+			self.B 		= 20
+			self.FN 	= 'well_trained_5v.p'
+			self.L 		= 50
 
 
 if __name__ == '__main__':
