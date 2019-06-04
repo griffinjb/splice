@@ -26,6 +26,8 @@ class agent:
 
 	def __init__(self,env,cfg):
 		self.c = [int(g(0,10)),int(g(0,10))]
+		while np.linalg.norm(self.c) > cfg.B:
+			self.c = [int(g(0,10)),int(g(0,10))]
 		self.env = env
 		self.E = env.getSensingMatrix(self.c)
 		self.G = gene(cfg)
@@ -292,6 +294,8 @@ class splice:
 			for ag in self.A:
 				ag.env = self.E
 				ag.c = [int(g(0,10)),int(g(0,10))]
+				while np.linalg.norm(ag.c) > self.c.B:
+					ag.c = [int(g(0,10)),int(g(0,10))]
 
 			# For each agent, take step
 			for i in range(self.c.L):
@@ -349,12 +353,12 @@ class cfg:
 
 	def __init__(self,ID):
 		if ID == 1:
-			self.N_A 	= 10
+			self.N_A 	= 2
 			self.S 		= 99
 			self.V 		= 5
 			self.B 		= 20
-			self.FN 	= 'well_trained_5v.p'
-			self.L 		= 50
+			self.FN 	= 'ordered_v5.p'
+			self.L 		= 200
 
 
 if __name__ == '__main__':
