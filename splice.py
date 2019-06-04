@@ -6,6 +6,7 @@ from random import gauss as g
 from random import shuffle
 import matplotlib.pyplot as plt
 from time import sleep
+from pickle import dump, load 
 
 # with ParallelGenerator(
 # 	self.xygen(wn1a,wn2a),
@@ -72,6 +73,12 @@ class genePool:
 
 	P = []	# Gene Pool [N_A,Dir,Vision]
 
+	def save(self,fn):
+		dump(self.P,open(fn,'wb'))
+
+	def loadGene(self,fn):
+		self.P = load(open(fn,'rb'))
+
 	def getShuffleReducePool(self,agents):
 		tmp = []
 
@@ -101,7 +108,7 @@ class genePool:
 		plt.show(block=False)
 		plt.pause(.001)
 
-	def reproduce(self,agents):
+	def reproduce(self,agents,init=False):
 
 		self.getShuffleReducePool(agents)
 		self.mutate()
@@ -110,16 +117,17 @@ class genePool:
 		for agent in agents:
 			fs.append(agent.f)
 		idx = sorted(range(len(fs)), key=lambda k: fs[k])
-		try:
-			idx = idx[:int(len(idx)/2)]
-		except Exception as e:
-			print(e)
-			print('Use Even Number of Agents')
+		if not init:
+			try:
+				idx = idx[:int(len(idx)/2)]
+			except Exception as e:
+				print(e)
+				print('Use Even Number of Agents')
 
 		PCTR = 0
 		for i in range(len(agents)):
 			if i in idx:
-				agents[i].G.W = self.P[PCTR]
+				agents[i].G.W = self.P[PCTR%self.P.shape[0]]
 				agents[i].G.A = agents[i].G.W[:7,:]
 				agents[i].G.B = agents[i].G.W[8,:].T
 				PCTR += 1
@@ -229,6 +237,9 @@ class splice:
 
 	def sharedEnvironmentTrain(self):
 
+		if self.c.FN:
+			self.GP.reproduce(self.A,init=True)
+
 		for j in range(300000):
 			# initialize environment
 			self.E = environment(c)
@@ -242,6 +253,8 @@ class splice:
 				for a in self.A:
 					a.step()
 				self.E.plot(self.A)
+
+			self.performanceMetrics()
 
 			# Reproduce
 			self.A = self.GP.reproduce(self.A)
@@ -262,8 +275,22 @@ class splice:
 			print(avg)
 			print(maxv)
 
-		plt.imshow(ag.G.W,aspect='auto')
+
+
+	def performanceMetrics(self):
+		print('Weight Variance:'+str(np.var(self.GP.P)))
+
+		fs = []
+		for ag in self.A:
+			fs.append(ag.f)
+
+		fs.sort()
+
+		plt.figure('performance')
+		plt.plot(fs)
 		plt.show(block=False)
+		plt.pause(.001)
+
 
 class cfg:
 
@@ -272,14 +299,15 @@ class cfg:
 	V	= 10	# Vision / Size of sensing matrix
 	B	= 1000	# Resource Boundary || x,y || > 1000
 	L 	= 100   # Lifespan
+	FN 	= ''	# Gene Pool Filename | Ignore if Empty
 
 	def __init__(self,ID):
 		if ID == 1:
-			self.N_A 	= 99
-			self.S 		= 5
-			self.V 		= 10
+			self.N_A 	= 10
+			self.S 		= 50
+			self.V 		= 5
 			self.B 		= 100
-
+			self.FN 	= 'genepool_5V.p'
 
 if __name__ == '__main__':
 
