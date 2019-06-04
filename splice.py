@@ -38,7 +38,14 @@ class agent:
 
 			self.E = self.env.getSensingMatrix(self.c)
 
-			self.P = self.G.A @ self.E @ self.G.B
+			E = self.E
+			A = self.G.A 
+			B = self.G.B 
+
+			self.P = (A@E@B)*np.eye(8)@np.ones([8,1])
+
+
+
 			for i in range(len(self.P)):
 				if self.P[i] == np.array(self.P).max():
 					break
@@ -108,6 +115,36 @@ class genePool:
 		plt.show(block=False)
 		plt.pause(.001)
 
+	def plt_weights(self):
+		p = self.P.mean(axis=0)
+		A = p[:8,:]
+		B = p[8:,:]
+
+		g = np.zeros([A.shape[1],A.shape[1]])
+
+
+
+		fig,ax = plt.subplots(nrows=2,ncols=4,num='Weight Distribution')
+
+		names = ['up','down','left','right','UR','DR','DL','UL']
+
+		for i in range(8):
+			v = A[i,:]
+			h = B[i,:]
+
+			for j in range(len(v)):
+				for k in range(len(h)):
+					g[j,k] = v[j]*h[k]
+
+			ax[int(i/4),i%4].title.set_text(names[i])
+			ax[int(i/4),i%4].imshow(g,aspect='equal')
+
+		plt.show(block=False)
+		plt.pause(.001)
+
+
+
+
 	def reproduce(self,agents,init=False):
 
 		self.getShuffleReducePool(agents)
@@ -128,8 +165,8 @@ class genePool:
 		for i in range(len(agents)):
 			if i in idx:
 				agents[i].G.W = self.P[PCTR%self.P.shape[0]]
-				agents[i].G.A = agents[i].G.W[:7,:]
-				agents[i].G.B = agents[i].G.W[8,:].T
+				agents[i].G.A = agents[i].G.W[:8,:]
+				agents[i].G.B = agents[i].G.W[8:,:].T
 				PCTR += 1
 
 		return(agents)
@@ -144,9 +181,9 @@ class gene:
 
 		# P = A@E@B
 		# 8X1 = 8XV VXV VX1
-		self.W = np.random.normal(0,1,[9,c.V])
-		self.A = self.W[:7,:]
-		self.B = self.W[8,:].T
+		self.W = np.random.normal(0,1,[16,c.V])
+		self.A = self.W[:8,:]
+		self.B = self.W[8:,:].T
 
 class environment:
 
@@ -259,7 +296,8 @@ class splice:
 			# Reproduce
 			self.A = self.GP.reproduce(self.A)
 
-			self.GP.pltAvg()
+			# self.GP.pltAvg()
+			self.GP.plt_weights()
 
 			avg = 0
 			maxv = 0
@@ -303,11 +341,13 @@ class cfg:
 
 	def __init__(self,ID):
 		if ID == 1:
-			self.N_A 	= 10
+			self.N_A 	= 100
 			self.S 		= 50
 			self.V 		= 5
-			self.B 		= 100
-			self.FN 	= 'genepool_5V.p'
+			self.B 		= 50
+			# self.FN 	= 'genepool_5V.p'
+			self.L 		= 100
+
 
 if __name__ == '__main__':
 
