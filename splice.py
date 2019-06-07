@@ -8,12 +8,6 @@ import matplotlib.pyplot as plt
 from time import sleep
 from pickle import dump, load 
 
-# with ParallelGenerator(
-# 	self.xygen(wn1a,wn2a),
-# 	max_lookahead=200) as xyg:
-# 	for x,y in xyg:
-# 		self.model.fit(x,y,epochs=1)
-
 class agent:
 	c = a([0,0])	# Row,Col
 	E = []			# Sensing Matrix
@@ -24,14 +18,16 @@ class agent:
 	P = []			# Next Step Policy
 	cfg = ''
 
+	H = []			# Move History
+
+
 	def __init__(self,env,cfg):
-		self.c = [int(g(0,10)),int(g(0,10))]
-		while np.linalg.norm(self.c) > cfg.B:
-			self.c = [int(g(0,10)),int(g(0,10))]
 		self.env = env
 		self.E = env.getSensingMatrix(self.c)
 		self.G = gene(cfg)
 		self.cfg = cfg
+		self.get_coords()
+		self.H = np.zeros([cfg.M,1])
 
 	def step(self):
 
@@ -42,14 +38,19 @@ class agent:
 			E = self.E
 			A = self.G.A 
 			B = self.G.B 
+			D = self.G.D
 
-			self.P = (A@E@B)*np.eye(8)@np.ones([8,1])
+			self.P = (A@E@B)*np.eye(8)@np.ones([8,1]) + D@self.H
 
 
 
 			for i in range(len(self.P)):
 				if self.P[i] == np.array(self.P).max():
 					break
+
+			self.H[1:] = self.H[:-1]
+			self.H[0] = i 
+
 			# Up
 			if i == 0:
 				self.c += a([1,0])
@@ -77,6 +78,16 @@ class agent:
 
 			self.f += self.env.consume(self.c)
 
+			return(i)
+
+		return(-999)
+
+	def get_coords(self):
+		c = [int(g(0,10)),int(g(0,10))]
+		while np.linalg.norm(c) > self.cfg.B:
+			c = [int(g(0,10)),int(g(0,10))]
+		self.c = c
+
 class genePool:
 
 	P = []	# Gene Pool [N_A,Dir,Vision]
@@ -89,7 +100,7 @@ class genePool:
 		dump(self.P,open(fn,'wb'))
 
 	def loadGene(self,fn=''):
-		if fn == '':	
+		if fn == '':
 			self.P = load(open(self.cfg.FN,'rb'))	
 		else:
 			self.P = load(open(fn,'rb'))
@@ -126,15 +137,16 @@ class genePool:
 	def plt_weights(self):
 		p = self.P.mean(axis=0)
 		A = p[:8,:]
-		B = p[8:,:]
+		B = p[8:16,:]
+		D = p[16:,:]
 
 		g = np.zeros([A.shape[1],A.shape[1]])
 
 
 
-		fig,ax = plt.subplots(nrows=2,ncols=4,num='Weight Distribution',clear=True)
+		fig,ax = plt.subplots(nrows=2,ncols=5,num='Weight Distribution',clear=True)
 
-		names = ['up','down','left','right','UR','DR','DL','UL']
+		names = ['up','down','left','right','UR','DR','DL','UL','Memory']
 
 		for i in range(8):
 			v = A[i,:]
@@ -148,12 +160,18 @@ class genePool:
 			ax[int(i/4),i%4].title.set_text(names[i])
 			ax[int(i/4),i%4].imshow(g,aspect='equal')
 
+
+		ax[0,4].imshow(D,aspect='equal')
+		ax[1,4].axis('off')
+
 		plt.show(block=False)
 		plt.pause(.001)
 
 
 
 	def reproduce(self,agents,init=False):
+
+		self.save('current.p')
 
 		self.getShuffleReducePool(agents)
 		self.mutate()
@@ -176,14 +194,23 @@ class genePool:
 			if i in idx:
 				agents[i].G.W = self.P[PCTR%self.P.shape[0]]
 				agents[i].G.A = agents[i].G.W[:8,:]
-				agents[i].G.B = agents[i].G.W[8:,:].T
+				agents[i].G.B = agents[i].G.W[8:16,:].T
+				agents[i].G.D = agents[i].G.W[16:,:]
 				PCTR += 1
+
+
+		i = max(idx)
+		agents[i].G.W = self.P.mean(axis=0)
+		agents[i].G.A = agents[i].G.W[:8,:]
+		agents[i].G.B = agents[i].G.W[8:16,:].T
+		agents[i].G.D = agents[i].G.W[16:,:]
 
 		return(agents)
 
 class gene:
 	A = []	# Weight Matrix Vertical
 	B = []	# Weight Matrix Horizontal
+	D = [] 	# Weight Matrix Memory
 	W = []	# Weigh Matrix [A B.T].T
 
 	def __init__(self,c):
@@ -191,9 +218,10 @@ class gene:
 
 		# P = A@E@B
 		# 8X1 = 8XV VXV VX1
-		self.W = np.random.normal(0,1,[16,c.V])
+		self.W = np.random.normal(0,1,[24,c.V])
 		self.A = self.W[:8,:]
-		self.B = self.W[8:,:].T
+		self.B = self.W[8:16,:].T
+		self.D = self.W[16:,:]
 
 class environment:
 
@@ -274,6 +302,7 @@ class splice:
 	A = []
 	c = ''
 	GP = ''
+	md = []
 
 	def __init__(self,c):
 
@@ -293,14 +322,14 @@ class splice:
 			self.E.master = {}
 			for ag in self.A:
 				ag.env = self.E
-				ag.c = [int(g(0,10)),int(g(0,10))]
-				while np.linalg.norm(ag.c) > self.c.B:
-					ag.c = [int(g(0,10)),int(g(0,10))]
+				ag.get_coords()
+
+			self.md = []
 
 			# For each agent, take step
 			for i in range(self.c.L):
 				for a in self.A:
-					a.step()
+					self.md.append(a.step())
 				self.E.plot(self.A)
 
 			self.performanceMetrics()
@@ -325,9 +354,25 @@ class splice:
 			print(avg)
 			print(maxv)
 
+	def move_distribution(self):
+		plt.figure('Move Distribution')
+		K = np.zeros([3,3])
+		for i in range(8):
+			K[int(i/3),i%3] = len([j for j in self.md if j == i])
+		K = K.flatten()
+		K[5:] = K[4:-1]
+		K = K.reshape([3,3])
+		plt.clf()
+		plt.imshow(K,aspect='equal')
+		plt.show(block=False)
+		plt.pause(.001)
+
 
 
 	def performanceMetrics(self):
+
+		self.move_distribution()
+
 		print('Weight Variance:'+str(np.var(self.GP.P)))
 
 		fs = []
@@ -349,17 +394,20 @@ class cfg:
 	V	= 10	# Vision / Size of sensing matrix
 	B	= 1000	# Resource Boundary || x,y || > 1000
 	L 	= 100   # Lifespan
+	M 	= 10 	# Memory
 	FN 	= ''	# Gene Pool Filename | Ignore if Empty
 
 	def __init__(self,ID):
+		
+		# V5 M5
 		if ID == 1:
-			self.N_A 	= 2
-			self.S 		= 99
+			self.N_A 	= 40
+			self.S 		= 60
 			self.V 		= 5
-			self.B 		= 20
-			self.FN 	= 'ordered_v5.p'
-			self.L 		= 200
-
+			self.B 		= 30
+			self.FN 	= 'well_trained_v5wM.p'
+			self.L 		= 40
+			self.M 		= 5
 
 if __name__ == '__main__':
 
